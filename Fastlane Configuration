@@ -1,0 +1,33 @@
+# fastlane/Fastfile
+
+default_platform(:ios)
+
+platform :ios do
+  desc "Build and upload to TestFlight"
+  lane :beta do
+    increment_build_number(xcodeproj: "ChatsApp.xcodeproj")
+    build_app(
+      workspace: "ChatsApp.xcworkspace",
+      scheme: "ChatsApp",
+      export_method: "app-store"
+    )
+    upload_to_testflight(
+      skip_waiting_for_build_processing: true
+    )
+  end
+
+  desc "Build and upload to App Store"
+  lane :release do
+    increment_build_number(xcodeproj: "ChatsApp.xcodeproj")
+    build_app(
+      workspace: "ChatsApp.xcworkspace",
+      scheme: "ChatsApp",
+      export_method: "app-store"
+    )
+    upload_to_app_store(
+      force: true,
+      skip_metadata: false,
+      skip_screenshots: false
+    )
+  end
+end
