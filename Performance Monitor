@@ -1,0 +1,137 @@
+// src/utils/performance.js
+class PerformanceMonitor {
+  constructor() {
+    this.marks = new Map();
+    this.measures = new Map();
+    this.thresholds = {
+      screenLoad: 3000,    // 3 seconds
+      apiCall: 2000,       // 2 seconds
+      messageSend: 1000,   // 1 second
+      imageLoad: 3000,     // 3 seconds
+    };
+  }
+
+  startMark(name) {
+    this.marks.set(name, {
+      startTime: Date.now(),
+      startMemory: this.getMemoryUsage(),
+    });
+  }
+
+  endMark(name) {
+    const mark = this.marks.get(name);
+    if (!mark) return null;
+
+    const endTime = Date.now();
+    const endMemory = this.getMemoryUsage();
+    const duration = endTime - mark.startTime;
+    const memoryDelta = endMemory - mark.startMemory;
+
+    this.marks.delete(name);
+
+    const measure = {
+      name,
+      duration,
+      memoryDelta,
+      timestamp: endTime,
+    };
+
+    this.measures.set(name, measure);
+    this.checkThreshold(name, measure);
+
+    return measure;
+  }
+
+  getMemoryUsage() {
+    if (global.performance && global.performance.memory) {
+      return global.performance.memory.usedJSHeapSize;
+    }
+    return 0;
+  }
+
+  checkThreshold(name, measure) {
+    const threshold = this.thresholds[name.split(':')[0]];
+    
+    if (threshold && measure.duration > threshold) {
+      console.warn(
+        `Performance warning: ${name} took ${measure.duration}ms (threshold: ${threshold}ms)`
+      );
+      
+      // Report to analytics in production
+      if (!__DEV__) {
+        this.reportSlowOperation(name, measure);
+      }
+    }
+  }
+
+  reportSlowOperation(name, measure) {
+    // Send to your monitoring service
+    try {
+      const analyticsService = require('../services/analyticsService').default;
+      analyticsService.trackEvent('performance_slow_operation', {
+        operation: name,
+        duration: measure.duration,
+        memory_delta: measure.memoryDelta,
+      });
+    } catch (error) {
+      console.error('Report slow operation failed:', error);
+    }
+  }
+
+  measureScreenLoad(screenName) {
+    this.startMark(`screen:${screenName}`);
+    
+    return () => {
+      const measure = this.endMark(`screen:${screenName}`);
+      if (measure) {
+        console.log(`Screen ${screenName} loaded in ${measure.duration}ms`);
+      }
+    };
+  }
+
+  measureAPICall(endpoint) {
+    this.startMark(`api:${endpoint}`);
+    
+    return () => {
+      const measure = this.endMark(`api:${endpoint}`);
+      if (measure) {
+        console.log(`API ${endpoint} completed in ${measure.duration}ms`);
+      }
+    };
+  }
+
+  measureMessageSend() {
+    this.startMark('message:send');
+    
+    return () => {
+      const measure = this.endMark('message:send');
+      if (measure) {
+        console.log(`Message sent in ${measure.duration}ms`);
+      }
+    };
+  }
+
+  getReport() {
+    const report = {
+      measures: Array.from(this.measures.values()),
+      totalMeasures: this.measures.size,
+      slowOperations: [],
+    };
+
+    this.measures.forEach((measure, name) => {
+      const threshold = this.thresholds[name.split(':')[0]];
+      if (threshold && measure.duration > threshold) {
+        report.slowOperations.push(measure);
+      }
+    });
+
+    return report;
+  }
+
+  clear() {
+    this.marks.clear();
+    this.measures.clear();
+  }
+}
+
+export default new PerformanceMonitor();
