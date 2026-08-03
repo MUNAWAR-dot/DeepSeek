@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: chatsapp-server
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
+      - FIREBASE_CLIENT_EMAIL=${FIREBASE_CLIENT_EMAIL}
+      - FIREBASE_PRIVATE_KEY=${FIREBASE_PRIVATE_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+      - AGORA_APP_ID=${AGORA_APP_ID}
+      - AGORA_APP_CERTIFICATE=${AGORA_APP_CERTIFICATE}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+    volumes:
+      - ./uploads:/app/uploads
+    networks:
+      - chatsapp-network
+
+  nginx:
+    image: nginx:alpine
+    container_name: chatsapp-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/nginx/ssl
+    depends_on:
+      - server
+    networks:
+      - chatsapp-network
+
+networks:
+  chatsapp-network:
+    driver: bridge
