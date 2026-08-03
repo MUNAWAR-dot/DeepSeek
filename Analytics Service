@@ -1,0 +1,105 @@
+// src/services/analyticsService.js
+import analytics from '@react-native-firebase/analytics';
+import crashlytics from '@react-native-firebase/crashlytics';
+
+class AnalyticsService {
+  // Screen tracking
+  async trackScreenView(screenName, screenClass) {
+    try {
+      await analytics().logScreenView({
+        screen_name: screenName,
+        screen_class: screenClass || screenName,
+      });
+    } catch (error) {
+      console.error('Analytics screen tracking failed:', error);
+    }
+  }
+
+  // User actions
+  async trackEvent(eventName, params = {}) {
+    try {
+      await analytics().logEvent(eventName, {
+        ...params,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error('Analytics event tracking failed:', error);
+    }
+  }
+
+  // User properties
+  async setUserProperties(properties) {
+    try {
+      await analytics().setUserProperties(properties);
+    } catch (error) {
+      console.error('Analytics user properties failed:', error);
+    }
+  }
+
+  // Set user ID
+  async setUserId(userId) {
+    try {
+      await analytics().setUserId(userId);
+      crashlytics().setUserId(userId);
+    } catch (error) {
+      console.error('Analytics set user ID failed:', error);
+    }
+  }
+
+  // E-commerce events
+  async trackPurchase(params) {
+    await this.trackEvent('purchase', params);
+  }
+
+  // Custom events for messaging
+  async trackMessageSent(chatType, messageType) {
+    await this.trackEvent('message_sent', {
+      chat_type: chatType,
+      message_type: messageType,
+    });
+  }
+
+  async trackCallStarted(callType) {
+    await this.trackEvent('call_started', {
+      call_type: callType,
+    });
+  }
+
+  async trackCallEnded(callType, duration) {
+    await this.trackEvent('call_ended', {
+      call_type: callType,
+      duration_seconds: duration,
+    });
+  }
+
+  async trackStatusCreated(statusType) {
+    await this.trackEvent('status_created', {
+      status_type: statusType,
+    });
+  }
+
+  async trackGroupCreated(memberCount) {
+    await this.trackEvent('group_created', {
+      member_count: memberCount,
+    });
+  }
+
+  // Crash reporting
+  async logError(error, context = {}) {
+    try {
+      crashlytics().recordError(error, null, context);
+    } catch (e) {
+      console.error('Crash logging failed:', e);
+    }
+  }
+
+  async setCustomKey(key, value) {
+    try {
+      crashlytics().setAttribute(key, String(value));
+    } catch (e) {
+      console.error('Crashlytics set custom key failed:', e);
+    }
+  }
+}
+
+export default new AnalyticsService();
