@@ -1,0 +1,79 @@
+{
+  "app": {
+    "name": "شاتساب",
+    "tagline": "تواصل مع الأصدقاء والعائلة حول العالم",
+    "loading": "جارٍ التحميل...",
+    "error": "حدث خطأ ما",
+    "retry": "إعادة المحاولة",
+    "cancel": "إلغاء",
+    "done": "تم",
+    "save": "حفظ",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "search": "بحث",
+    "noResults": "لا توجد نتائج",
+    "offline": "أنت غير متصل",
+    "online": "متصل",
+    "lastSeen": "آخر ظهور {{time}}",
+    "typing": "يكتب...",
+    "recording": "يسجل...",
+    "today": "اليوم",
+    "yesterday": "أمس"
+  },
+  "auth": {
+    "login": "تسجيل الدخول",
+    "signup": "إنشاء حساب",
+    "logout": "تسجيل الخروج",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "confirmPassword": "تأكيد كلمة المرور",
+    "phoneNumber": "رقم الهاتف",
+    "fullName": "الاسم الكامل",
+    "username": "اسم المستخدم"
+  },
+  "chats": {
+    "title": "المحادثات",
+    "newChat": "محادثة جديدة",
+    "newGroup": "مجموعة جديدة",
+    "searchChats": "بحث في المحادثات...",
+    "noChats": "لا توجد محادثات",
+    "startChat": "ابدأ محادثة"
+  },
+  "messages": {
+    "typeMessage": "اكتب رسالة...",
+    "send": "إرسال",
+    "attach": "مرفقات",
+    "camera": "كاميرا",
+    "gallery": "المعرض",
+    "document": "مستند",
+    "location": "موقع",
+    "contact": "جهة اتصال",
+    "audio": "صوت"
+  },
+  "status": {
+    "title": "الحالة",
+    "myStatus": "حالتي",
+    "recentUpdates": "التحديثات الأخيرة",
+    "viewedUpdates": "التحديثات المعروضة",
+    "addStatus": "إضافة حالة"
+  },
+  "calls": {
+    "title": "المكالمات",
+    "voiceCall": "مكالمة صوتية",
+    "videoCall": "مكالمة فيديو",
+    "noCalls": "لا توجد مكالمات"
+  },
+  "settings": {
+    "title": "الإعدادات",
+    "profile": "الملف الشخصي",
+    "account": "الحساب",
+    "privacy": "الخصوصية",
+    "security": "الأمان",
+    "notifications": "الإشعارات",
+    "dataStorage": "البيانات والتخزين",
+    "appearance": "المظهر",
+    "language": "اللغة",
+    "help": "المساعدة",
+    "about": "حول"
+  }
+}
