@@ -1,0 +1,86 @@
+// src/services/rateLimiter.js
+class RateLimiter {
+  constructor() {
+    this.timestamps = new Map();
+    this.queue = new Map();
+  }
+
+  async throttle(key, limit, interval, fn) {
+    const now = Date.now();
+    const timestamps = this.timestamps.get(key) || [];
+    
+    // Remove old timestamps
+    const recentTimestamps = timestamps.filter(t => now - t < interval);
+    
+    if (recentTimestamps.length >= limit) {
+      // Rate limited
+      const oldestTimestamp = recentTimestamps[0];
+      const waitTime = interval - (now - oldestTimestamp);
+      
+      return new Promise((resolve, reject) => {
+        setTimeout(async () => {
+          try {
+            const result = await this.throttle(key, limit, interval, fn);
+            resolve(result);
+          } catch (error) {
+            reject(error);
+          }
+        }, waitTime + 100);
+      });
+    }
+    
+    // Execute the function
+    recentTimestamps.push(now);
+    this.timestamps.set(key, recentTimestamps);
+    
+    return fn();
+  }
+
+  async debounce(key, delay, fn) {
+    if (this.queue.has(key)) {
+      clearTimeout(this.queue.get(key));
+    }
+    
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(async () => {
+        this.queue.delete(key);
+        try {
+          const result = await fn();
+          resolve(result);
+        } catch (error) {
+          reject(error);
+        }
+      }, delay);
+      
+      this.queue.set(key, timeout);
+    });
+  }
+
+  // Message send rate limiting (max 30 messages per minute)
+  async limitMessageSend(userId, fn) {
+    return this.throttle(`message:${userId}`, 30, 60000, fn);
+  }
+
+  // API call rate limiting (max 60 calls per minute)
+  async limitAPICall(endpoint, fn) {
+    return this.throttle(`api:${endpoint}`, 60, 60000, fn);
+  }
+
+  // Search debounce (300ms)
+  async debounceSearch(query, fn) {
+    return this.debounce(`search:${query}`, 300, fn);
+  }
+
+  // Typing indicator debounce (1 second)
+  async debounceTyping(chatId, fn) {
+    return this.debounce(`typing:${chatId}`, 1000, fn);
+  }
+
+  clear() {
+    this.timestamps.clear();
+    this.queue.forEach(timeout => clearTimeout(timeout));
+    this.queue.clear();
+  }
+}
+
+export default new RateLimiter();
