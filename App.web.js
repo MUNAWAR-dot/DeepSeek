@@ -1,5 +1,5 @@
 // App.web.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   NavigationContainer 
 } from '@react-navigation/native';
@@ -13,7 +13,8 @@ import {
   TouchableOpacity, 
   StyleSheet, 
   Alert,
-  ActivityIndicator 
+  ActivityIndicator,
+  FlatList,
 } from 'react-native';
 
 const Stack = createNativeStackNavigator();
@@ -24,6 +25,14 @@ function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Check if already logged in
+  useEffect(() => {
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      navigation.navigate('Chats');
+    }
+  }, []);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -42,7 +51,6 @@ function LoginScreen({ navigation }) {
       const data = await response.json();
       
       if (response.ok) {
-        // Save token and user
         localStorage.setItem('authToken', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
         navigation.navigate('Chats');
@@ -189,16 +197,21 @@ function RegisterScreen({ navigation }) {
 function ChatsScreen({ navigation }) {
   const [chats, setChats] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      setUser(JSON.parse(userData));
+    }
     loadChats();
   }, []);
 
   const loadChats = async () => {
     try {
-      const user = JSON.parse(localStorage.getItem('user'));
-      if (user) {
-        const response = await fetch(`${API_URL}/api/chats/${user.id}`);
+      const userData = JSON.parse(localStorage.getItem('user'));
+      if (userData) {
+        const response = await fetch(`${API_URL}/api/chats/${userData.id}`);
         const data = await response.json();
         setChats(data);
       }
@@ -215,51 +228,343 @@ function ChatsScreen({ navigation }) {
     navigation.navigate('Login');
   };
 
+  if (loading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>💬 Chats</Text>
-        <TouchableOpacity onPress={handleLogout}>
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
+        <View style={styles.headerButtons}>
+          <TouchableOpacity 
+            onPress={() => navigation.navigate('Profile')}
+            style={styles.headerButton}
+          >
+            <Text style={styles.headerButtonText}>👤</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleLogout}>
+            <Text style={styles.logoutText}>Logout</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {loading ? (
+      <FlatList
+        data={chats}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={({ item }) => (
+          <TouchableOpacity 
+            style={styles.chatItem}
+            onPress={() => navigation.navigate('ChatRoom', { chatId: item.id })}
+          >
+            <View style={styles.chatAvatar}>
+              <Text style={styles.chatAvatarText}>
+                {item.group_name ? item.group_name.charAt(0).toUpperCase() : 'C'}
+              </Text>
+            </View>
+            <View style={styles.chatInfo}>
+              <Text style={styles.chatName}>
+                {item.group_name || 'Chat'}
+              </Text>
+              <Text style={styles.lastMessage} numberOfLines={1}>
+                {item.last_message || 'No messages yet'}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        )}
+        ListEmptyComponent={
+          <Text style={styles.emptyText}>No chats yet. Start a new chat!</Text>
+        }
+      />
+
+      {/* FAB Button - Step 11 */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => navigation.navigate('NewChat')}
+      >
+        <Text style={styles.fabText}>+</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+// ==================== PROFILE SCREEN ====================
+function ProfileScreen({ navigation }) {
+  const [user, setUser] = useState(null);
+  const [name, setName] = useState('');
+  const [status, setStatus] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    loadUser();
+  }, []);
+
+  const loadUser = async () => {
+    try {
+      const userData = localStorage.getItem('user');
+      if (userData) {
+        const parsed = JSON.parse(userData);
+        setUser(parsed);
+        setName(parsed.name || '');
+        setStatus(parsed.status || 'Hey there! I am using ChatsApp');
+      }
+    } catch (error) {
+      console.log('Error loading user:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!name.trim()) {
+      Alert.alert('Error', 'Name is required');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`${API_URL}/api/users/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          name: name,
+          status: status,
+        }),
+      });
+
+      if (response.ok) {
+        const updatedUser = { ...user, name, status };
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        Alert.alert('Success', 'Profile updated!');
+        navigation.goBack();
+      } else {
+        Alert.alert('Error', 'Failed to update profile');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Network error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.centered}>
         <ActivityIndicator size="large" color="#007AFF" />
-      ) : (
-        <View style={styles.chatList}>
-          {chats.length === 0 ? (
-            <Text style={styles.emptyText}>No chats yet</Text>
-          ) : (
-            chats.map((chat) => (
-              <TouchableOpacity 
-                key={chat.id} 
-                style={styles.chatItem}
-                onPress={() => navigation.navigate('ChatRoom', { chatId: chat.id })}
-              >
-                <Text style={styles.chatName}>
-                  {chat.group_name || 'Chat'}
-                </Text>
-                <Text style={styles.lastMessage}>
-                  {chat.last_message || 'No messages'}
-                </Text>
-              </TouchableOpacity>
-            ))
-          )}
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text style={styles.backText}>← Back</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Profile</Text>
+        <View style={{ width: 50 }} />
+      </View>
+
+      <View style={styles.avatarContainer}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>
+            {name ? name.charAt(0).toUpperCase() : '?'}
+          </Text>
         </View>
-      )}
+      </View>
+
+      <View style={styles.form}>
+        <Text style={styles.label}>Name</Text>
+        <TextInput
+          style={styles.input}
+          value={name}
+          onChangeText={setName}
+          placeholder="Your name"
+        />
+
+        <Text style={styles.label}>Status</Text>
+        <TextInput
+          style={styles.input}
+          value={status}
+          onChangeText={setStatus}
+          placeholder="Your status"
+          maxLength={100}
+        />
+
+        <Text style={styles.label}>Email</Text>
+        <Text style={styles.emailText}>{user?.email}</Text>
+
+        <TouchableOpacity
+          style={styles.saveButton}
+          onPress={handleSave}
+          disabled={saving}
+        >
+          {saving ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.saveButtonText}>Save Changes</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+// ==================== NEW CHAT SCREEN ====================
+function NewChatScreen({ navigation }) {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState(null);
+
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  const loadUsers = async () => {
+    try {
+      const userData = localStorage.getItem('user');
+      if (userData) {
+        setCurrentUser(JSON.parse(userData));
+      }
+
+      const response = await fetch(`${API_URL}/api/users/search/`);
+      const data = await response.json();
+      setUsers(data);
+    } catch (error) {
+      console.log('Error loading users:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const searchUsers = async (query) => {
+    setSearchQuery(query);
+    if (!query.trim()) {
+      loadUsers();
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/api/users/search/${query}`);
+      const data = await response.json();
+      setUsers(data);
+    } catch (error) {
+      console.log('Search error:', error);
+    }
+  };
+
+  const createChat = async (userId) => {
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`${API_URL}/api/chats`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          userId1: currentUser.id,
+          userId2: userId,
+          isGroup: false,
+        }),
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        Alert.alert('Success', 'Chat created!');
+        navigation.navigate('Chats');
+      } else {
+        Alert.alert('Error', data.error || 'Failed to create chat');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Network error');
+    }
+  };
+
+  const renderUser = ({ item }) => {
+    if (item.id === currentUser?.id) return null;
+    
+    return (
+      <TouchableOpacity
+        style={styles.userItem}
+        onPress={() => createChat(item.id)}
+      >
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>
+            {item.name ? item.name.charAt(0).toUpperCase() : '?'}
+          </Text>
+        </View>
+        <View style={styles.userInfo}>
+          <Text style={styles.userName}>{item.name || 'Unknown'}</Text>
+          <Text style={styles.userEmail}>{item.email}</Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text style={styles.backText}>← Back</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>New Chat</Text>
+        <View style={{ width: 50 }} />
+      </View>
+
+      <View style={styles.searchContainer}>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search users..."
+          value={searchQuery}
+          onChangeText={searchUsers}
+        />
+      </View>
+
+      <FlatList
+        data={users}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={renderUser}
+        ListEmptyComponent={
+          <Text style={styles.emptyText}>No users found</Text>
+        }
+      />
     </View>
   );
 }
 
 // ==================== CHAT ROOM SCREEN ====================
-function ChatRoomScreen({ route }) {
+function ChatRoomScreen({ route, navigation }) {
   const { chatId } = route.params;
   const [messages, setMessages] = useState([]);
   const [messageText, setMessageText] = useState('');
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      setUser(JSON.parse(userData));
+    }
     loadMessages();
   }, []);
 
@@ -276,15 +581,18 @@ function ChatRoomScreen({ route }) {
   };
 
   const sendMessage = async () => {
-    if (!messageText.trim()) return;
+    if (!messageText.trim() || !user) return;
 
     try {
-      const user = JSON.parse(localStorage.getItem('user'));
+      const token = localStorage.getItem('authToken');
       const response = await fetch(`${API_URL}/api/messages`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify({
-          chatId,
+          chatId: chatId,
           senderId: user.id,
           type: 'text',
           content: messageText,
@@ -292,12 +600,22 @@ function ChatRoomScreen({ route }) {
       });
       
       const newMessage = await response.json();
-      setMessages([...messages, newMessage]);
-      setMessageText('');
+      if (response.ok) {
+        setMessages([...messages, newMessage]);
+        setMessageText('');
+      }
     } catch (error) {
       console.log('Error sending message:', error);
     }
   };
+
+  if (loading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -305,36 +623,34 @@ function ChatRoomScreen({ route }) {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={styles.backText}>← Back</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Chat Room</Text>
+        <Text style={styles.headerTitle}>Chat Room</Text>
         <View style={{ width: 50 }} />
       </View>
 
-      {loading ? (
-        <ActivityIndicator size="large" color="#007AFF" />
-      ) : (
-        <View style={styles.messagesContainer}>
-          {messages.map((msg) => (
-            <View 
-              key={msg.id} 
-              style={[
-                styles.messageBubble,
-                msg.sender_id === JSON.parse(localStorage.getItem('user'))?.id 
-                  ? styles.myMessage 
-                  : styles.otherMessage
-              ]}
-            >
-              <Text style={[
-                styles.messageText,
-                msg.sender_id === JSON.parse(localStorage.getItem('user'))?.id 
-                  ? styles.myMessageText 
-                  : styles.otherMessageText
-              ]}>
-                {msg.content}
-              </Text>
-            </View>
-          ))}
-        </View>
-      )}
+      <FlatList
+        data={messages}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={({ item }) => (
+          <View 
+            style={[
+              styles.messageBubble,
+              item.sender_id === user?.id 
+                ? styles.myMessage 
+                : styles.otherMessage
+            ]}
+          >
+            <Text style={[
+              styles.messageText,
+              item.sender_id === user?.id 
+                ? styles.myMessageText 
+                : styles.otherMessageText
+            ]}>
+              {item.content}
+            </Text>
+          </View>
+        )}
+        inverted
+      />
 
       <View style={styles.inputContainer}>
         <TextInput
@@ -360,6 +676,8 @@ export default function App() {
         <Stack.Screen name="Register" component={RegisterScreen} />
         <Stack.Screen name="Chats" component={ChatsScreen} />
         <Stack.Screen name="ChatRoom" component={ChatRoomScreen} />
+        <Stack.Screen name="Profile" component={ProfileScreen} />
+        <Stack.Screen name="NewChat" component={NewChatScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
@@ -370,21 +688,44 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
-    padding: 20,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 40,
-    paddingBottom: 20,
+    padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerButton: {
+    marginRight: 16,
+  },
+  headerButtonText: {
+    fontSize: 22,
+  },
+  backText: {
+    fontSize: 16,
+    color: '#007AFF',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: 'bold',
     color: '#007AFF',
+    textAlign: 'center',
+    marginTop: 40,
   },
   subtitle: {
     fontSize: 16,
@@ -397,6 +738,7 @@ const styles = StyleSheet.create({
     borderColor: '#ddd',
     borderRadius: 10,
     padding: 15,
+    marginHorizontal: 20,
     marginBottom: 15,
     fontSize: 16,
   },
@@ -405,104 +747,7 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 10,
     alignItems: 'center',
+    marginHorizontal: 20,
     marginTop: 10,
   },
-  buttonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  link: {
-    color: '#007AFF',
-    textAlign: 'center',
-    marginTop: 20,
-    fontSize: 16,
-  },
-  logoutText: {
-    color: '#ff3b30',
-    fontSize: 16,
-  },
-  chatList: {
-    flex: 1,
-    marginTop: 20,
-  },
-  chatItem: {
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  chatName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  lastMessage: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 2,
-  },
-  emptyText: {
-    textAlign: 'center',
-    marginTop: 50,
-    fontSize: 16,
-    color: '#999',
-  },
-  backText: {
-    fontSize: 16,
-    color: '#007AFF',
-  },
-  messagesContainer: {
-    flex: 1,
-    paddingVertical: 10,
-  },
-  messageBubble: {
-    maxWidth: '80%',
-    padding: 12,
-    borderRadius: 15,
-    marginBottom: 8,
-  },
-  myMessage: {
-    alignSelf: 'flex-end',
-    backgroundColor: '#007AFF',
-  },
-  otherMessage: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#f0f0f0',
-  },
-  messageText: {
-    fontSize: 16,
-  },
-  myMessageText: {
-    color: '#fff',
-  },
-  otherMessageText: {
-    color: '#000',
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-  },
-  input: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 20,
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    marginRight: 8,
-    fontSize: 16,
-  },
-  sendButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    justifyContent: 'center',
-  },
-  sendButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-});
+          
