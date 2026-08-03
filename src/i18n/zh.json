@@ -1,0 +1,79 @@
+{
+  "app": {
+    "name": "ChatsApp",
+    "tagline": "与全世界的朋友和家人联系",
+    "loading": "加载中...",
+    "error": "出了点问题",
+    "retry": "重试",
+    "cancel": "取消",
+    "done": "完成",
+    "save": "保存",
+    "delete": "删除",
+    "edit": "编辑",
+    "search": "搜索",
+    "noResults": "没有找到结果",
+    "offline": "您已离线",
+    "online": "在线",
+    "lastSeen": "最后在线 {{time}}",
+    "typing": "正在输入...",
+    "recording": "录音中...",
+    "today": "今天",
+    "yesterday": "昨天"
+  },
+  "auth": {
+    "login": "登录",
+    "signup": "注册",
+    "logout": "退出登录",
+    "email": "电子邮件",
+    "password": "密码",
+    "confirmPassword": "确认密码",
+    "phoneNumber": "手机号码",
+    "fullName": "全名",
+    "username": "用户名"
+  },
+  "chats": {
+    "title": "聊天",
+    "newChat": "新建聊天",
+    "newGroup": "新建群组",
+    "searchChats": "搜索聊天...",
+    "noChats": "暂无聊天",
+    "startChat": "开始对话"
+  },
+  "messages": {
+    "typeMessage": "输入消息...",
+    "send": "发送",
+    "attach": "附件",
+    "camera": "相机",
+    "gallery": "相册",
+    "document": "文件",
+    "location": "位置",
+    "contact": "联系人",
+    "audio": "音频"
+  },
+  "status": {
+    "title": "状态",
+    "myStatus": "我的状态",
+    "recentUpdates": "最近的更新",
+    "viewedUpdates": "已查看的更新",
+    "addStatus": "添加状态"
+  },
+  "calls": {
+    "title": "通话",
+    "voiceCall": "语音通话",
+    "videoCall": "视频通话",
+    "noCalls": "暂无通话"
+  },
+  "settings": {
+    "title": "设置",
+    "profile": "个人资料",
+    "account": "账号",
+    "privacy": "隐私",
+    "security": "安全",
+    "notifications": "通知",
+    "dataStorage": "数据和存储",
+    "appearance": "外观",
+    "language": "语言",
+    "help": "帮助",
+    "about": "关于"
+  }
+}
