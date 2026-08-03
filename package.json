@@ -41,7 +41,6 @@
     "@react-native-google-signin/google-signin": "^10.1.1",
     "@react-native-masked-view/masked-view": "^0.3.0",
     "@react-native-picker/picker": "^2.6.1",
-    "@react-native-seoul/video": "^1.0.0",
     "@shopify/flash-list": "^1.6.3",
     "@twotalltotems/react-native-otp-input": "^1.3.10",
     "axios": "^1.6.2",
