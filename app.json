@@ -1,84 +1,34 @@
 {
-  "name": "ChatsApp",
-  "displayName": "ChatsApp",
   "expo": {
     "name": "ChatsApp",
+    "displayName": "ChatsApp",
     "slug": "chatsapp",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./src/assets/images/icon.png",
-    "userInterfaceStyle": "automatic",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
     "splash": {
-      "image": "./src/assets/images/splash.png",
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#075E54"
+      "backgroundColor": "#ffffff"
     },
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.chatsapp.messenger",
-      "buildNumber": "1",
-      "infoPlist": {
-        "NSContactsUsageDescription": "Allow ChatsApp to access your contacts to help you connect with friends",
-        "NSCameraUsageDescription": "Allow ChatsApp to access your camera to send photos and videos",
-        "NSMicrophoneUsageDescription": "Allow ChatsApp to access your microphone for voice messages and calls",
-        "NSPhotoLibraryUsageDescription": "Allow ChatsApp to access your photo library to share photos",
-        "NSPhotoLibraryAddUsageDescription": "Allow ChatsApp to save photos to your library",
-        "NSLocationWhenInUseUsageDescription": "Allow ChatsApp to access your location to share with friends",
-        "NSLocationAlwaysUsageDescription": "Allow ChatsApp to access your location for live location sharing",
-        "NSMotionUsageDescription": "Allow ChatsApp to access motion data",
-        "UIBackgroundModes": ["audio", "voip", "fetch", "remote-notification"],
-        "ITSAppUsesNonExemptEncryption": false
-      },
-      "config": {
-        "googleMapsApiKey": "YOUR_GOOGLE_MAPS_API_KEY"
-      },
-      "googleServicesFile": "./ios/GoogleService-Info.plist"
+      "bundleIdentifier": "com.yourcompany.chatsapp"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./src/assets/images/adaptive-icon.png",
-        "backgroundColor": "#075E54"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
       },
-      "package": "com.chatsapp.messenger",
-      "versionCode": 1,
-      "permissions": [
-        "CAMERA",
-        "RECORD_AUDIO",
-        "READ_CONTACTS",
-        "WRITE_CONTACTS",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE",
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION",
-        "ACCESS_BACKGROUND_LOCATION",
-        "FOREGROUND_SERVICE",
-        "VIBRATE",
-        "RECEIVE_BOOT_COMPLETED",
-        "SYSTEM_ALERT_WINDOW",
-        "USE_FULL_SCREEN_INTENT"
-      ],
-      "googleServicesFile": "./android/app/google-services.json",
-      "config": {
-        "googleMaps": {
-          "apiKey": "YOUR_GOOGLE_MAPS_API_KEY"
-        }
-      }
+      "package": "com.yourcompany.chatsapp"
     },
-    "plugins": [
-      "@react-native-firebase/app",
-      "@react-native-firebase/auth",
-      "@react-native-google-signin/google-signin",
-      [
-        "react-native-video",
-        {
-          "enableNotificationControls": true,
-          "enableBackgroundAudio": true
-        }
-      ]
-    ],
+    "web": {
+      "bundler": "metro"
+    },
     "extra": {
       "eas": {
         "projectId": "your-project-id"
