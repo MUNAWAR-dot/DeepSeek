@@ -1,0 +1,29 @@
+# fastlane/Fastfile
+
+default_platform(:android)
+
+platform :android do
+  desc "Build and upload to Play Store (Beta)"
+  lane :beta do
+    gradle(
+      task: "bundle",
+      build_type: "Release"
+    )
+    upload_to_play_store(
+      track: 'beta',
+      release_status: 'draft'
+    )
+  end
+
+  desc "Build and upload to Play Store (Production)"
+  lane :release do
+    gradle(
+      task: "bundle",
+      build_type: "Release"
+    )
+    upload_to_play_store(
+      track: 'production',
+      release_status: 'completed'
+    )
+  end
+end
