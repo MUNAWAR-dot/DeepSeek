@@ -1,0 +1,186 @@
+// src/services/backgroundService.js
+import { AppState, Platform } from 'react-native';
+import BackgroundFetch from 'react-native-background-fetch';
+import BackgroundTimer from 'react-native-background-timer';
+import useStore from '../store/store';
+import userService from './userService';
+import chatService from './chatService';
+import notificationService from './notificationService';
+
+class BackgroundService {
+  initialize() {
+    this.setupAppStateHandler();
+    this.setupBackgroundFetch();
+  }
+
+  setupAppStateHandler() {
+    AppState.addEventListener('change', this.handleAppStateChange);
+  }
+
+  handleAppStateChange = async (nextAppState) => {
+    const { user } = useStore.getState();
+    
+    if (!user?.uid) return;
+
+    if (nextAppState === 'active') {
+      // App came to foreground
+      await userService.setOnlineStatus(user.uid, true);
+      this.syncPendingData();
+      notificationService.clearAllNotifications();
+    } else if (nextAppState === 'background') {
+      // App went to background
+      await userService.setOnlineStatus(user.uid, false);
+      this.saveAppState();
+    }
+  };
+
+  setupBackgroundFetch() {
+    BackgroundFetch.configure(
+      {
+        minimumFetchInterval: 15, // minutes
+        stopOnTerminate: false,
+        startOnBoot: true,
+        enableHeadless: true,
+      },
+      async (taskId) => {
+        console.log('Background fetch executed:', taskId);
+        await this.performBackgroundTask();
+        BackgroundFetch.finish(taskId);
+      },
+      (error) => {
+        console.error('Background fetch failed:', error);
+      }
+    );
+
+    BackgroundFetch.start();
+  }
+
+  async performBackgroundTask() {
+    try {
+      const { user } = useStore.getState();
+      if (!user?.uid) return;
+
+      // Sync messages
+      await this.syncPendingData();
+
+      // Update online status
+      await userService.setOnlineStatus(user.uid, true);
+
+      // Clean up expired data
+      await this.cleanupExpiredData();
+
+      console.log('Background task completed');
+    } catch (error) {
+      console.error('Background task failed:', error);
+    }
+  }
+
+  async syncPendingData() {
+    try {
+      // Sync any pending operations
+      const pendingOps = await AsyncStorage.getItem('@pending_operations');
+      if (pendingOps) {
+        const operations = JSON.parse(pendingOps);
+        
+        for (const op of operations) {
+          switch (op.type) {
+            case 'send_message':
+              await chatService.sendTextMessage(op.chatId, op.content);
+              break;
+            case 'update_status':
+              await userService.updateProfile(op.userId, op.data);
+              break;
+            default:
+              break;
+          }
+        }
+
+        await AsyncStorage.removeItem('@pending_operations');
+      }
+    } catch (error) {
+      console.error('Sync pending data failed:', error);
+    }
+  }
+
+  async saveAppState() {
+    try {
+      const state = useStore.getState();
+      const criticalState = {
+        lastActiveChat: state.activeChat?.id,
+        lastScreen: state.currentScreen,
+        timestamp: Date.now(),
+      };
+      
+      await AsyncStorage.setItem(
+        '@app_state',
+        JSON.stringify(criticalState)
+      );
+    } catch (error) {
+      console.error('Save app state failed:', error);
+    }
+  }
+
+  async restoreAppState() {
+    try {
+      const state = await AsyncStorage.getItem('@app_state');
+      if (state) {
+        return JSON.parse(state);
+      }
+      return null;
+    } catch (error) {
+      console.error('Restore app state failed:', error);
+      return null;
+    }
+  }
+
+  async cleanupExpiredData() {
+    try {
+      const cacheService = require('./cacheService').default;
+      await cacheService.clearMemory();
+      
+      // Clean up old pending operations
+      const pendingOps = await AsyncStorage.getItem('@pending_operations');
+      if (pendingOps) {
+        const operations = JSON.parse(pendingOps);
+        const now = Date.now();
+        
+        // Remove operations older than 24 hours
+        const validOps = operations.filter(op => 
+          now - op.timestamp < 24 * 60 * 60 * 1000
+        );
+        
+        await AsyncStorage.setItem(
+          '@pending_operations',
+          JSON.stringify(validOps)
+        );
+      }
+    } catch (error) {
+      console.error('Cleanup expired data failed:', error);
+    }
+  }
+
+  queueOperation(operation) {
+    try {
+      const pendingOps = await AsyncStorage.getItem('@pending_operations');
+      const operations = pendingOps ? JSON.parse(pendingOps) : [];
+      
+      operations.push({
+        ...operation,
+        timestamp: Date.now(),
+      });
+      
+      await AsyncStorage.setItem(
+        '@pending_operations',
+        JSON.stringify(operations)
+      );
+    } catch (error) {
+      console.error('Queue operation failed:', error);
+    }
+  }
+
+  destroy() {
+    BackgroundFetch.stop();
+  }
+}
+
+export default new BackgroundService();
