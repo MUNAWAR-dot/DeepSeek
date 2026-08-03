@@ -1,0 +1,14 @@
+{
+  "hello": "안녕하세요",
+  "welcome": "환영합니다",
+  "settings": "설정",
+  "language": "언어",
+  "save": "저장",
+  "cancel": "취소",
+  "delete": "삭제",
+  "edit": "편집",
+  "loading": "로딩 중...",
+  "error": "오류",
+  "success": "성공",
+  "confirm": "확인"
+}
