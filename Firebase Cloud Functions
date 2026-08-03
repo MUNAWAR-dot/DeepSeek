@@ -1,0 +1,113 @@
+// functions/index.js
+const functions = require('firebase-functions');
+const admin = require('firebase-admin');
+
+admin.initializeApp();
+const db = admin.firestore();
+
+// Clean up expired statuses
+exports.cleanupExpiredStatuses = functions.pubsub
+  .schedule('every 1 hours')
+  .onRun(async (context) => {
+    const now = admin.firestore.Timestamp.now();
+    
+    const snapshot = await db
+      .collection('statuses')
+      .where('expiresAt', '<=', now)
+      .get();
+
+    const batch = db.batch();
+    
+    snapshot.forEach((doc) => {
+      batch.delete(doc.ref);
+      
+      // Update user's hasStatus field if needed
+      const userId = doc.data().userId;
+      if (userId) {
+        db.collection('users').doc(userId).update({
+          hasStatus: false,
+        });
+      }
+    });
+
+    await batch.commit();
+    
+    console.log(`Cleaned up ${snapshot.size} expired statuses`);
+    return null;
+  });
+
+// Send push notification when new message arrives
+exports.sendMessageNotification = functions.firestore
+  .document('chats/{chatId}/messages/{messageId}')
+  .onCreate(async (snap, context) => {
+    const message = snap.data();
+    const chatId = context.params.chatId;
+
+    // Get chat details
+    const chatDoc = await db.collection('chats').doc(chatId).get();
+    const chatData = chatDoc.data();
+
+    if (!chatData) return null;
+
+    // Send notification to each participant except sender
+    const notifications = chatData.participants
+      .filter((participantId) => participantId !== message.senderId)
+      .map(async (participantId) => {
+        const userDoc = await db.collection('users').doc(participantId).get();
+        const userData = userDoc.data();
+
+        if (!userData || !userData.fcmTokens?.length) return null;
+
+        const senderDoc = await db.collection('users').doc(message.senderId).get();
+        const senderName = senderDoc.data()?.displayName || 'Someone';
+
+        const payload = {
+          notification: {
+            title: chatData.isGroup ? chatData.groupName : senderName,
+            body: message.type === 'text' 
+              ? message.content 
+              : `Sent ${message.type}`,
+          },
+          data: {
+            type: 'message',
+            chatId,
+            messageId: message.id,
+            senderId: message.senderId,
+          },
+          tokens: userData.fcmTokens,
+        };
+
+        try {
+          await admin.messaging().sendMulticast(payload);
+        } catch (error) {
+          console.error('Notification error:', error);
+        }
+      });
+
+    await Promise.all(notifications);
+    return null;
+  });
+
+// Update user presence on disconnect
+exports.onUserStatusChanged = functions.database
+  .ref('/status/{userId}')
+  .onUpdate(async (change, context) => {
+    const userId = context.params.userId;
+    const status = change.after.val();
+
+    const userRef = db.collection('users').doc(userId);
+    
+    if (status === 'online') {
+      await userRef.update({
+        online: true,
+        lastSeen: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    } else {
+      await userRef.update({
+        online: false,
+        lastSeen: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    }
+
+    return null;
+  });
