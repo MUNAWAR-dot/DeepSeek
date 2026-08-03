@@ -1,0 +1,101 @@
+// src/config/accessibility.js
+import { AccessibilityInfo, Platform } from 'react-native';
+
+class AccessibilityConfig {
+  constructor() {
+    this.isScreenReaderEnabled = false;
+    this.fontScale = 1;
+    this.boldTextEnabled = false;
+    this.reduceMotionEnabled = false;
+    this.invertColorsEnabled = false;
+  }
+
+  async initialize() {
+    // Check screen reader status
+    this.isScreenReaderEnabled = await AccessibilityInfo.isScreenReaderEnabled();
+    
+    // Listen for changes
+    AccessibilityInfo.addEventListener(
+      'screenReaderChanged',
+      this.handleScreenReaderChanged
+    );
+
+    if (Platform.OS === 'ios') {
+      AccessibilityInfo.addEventListener(
+        'reduceMotionChanged',
+        this.handleReduceMotionChanged
+      );
+      
+      AccessibilityInfo.addEventListener(
+        'boldTextChanged',
+        this.handleBoldTextChanged
+      );
+      
+      AccessibilityInfo.addEventListener(
+        'grayscaleChanged',
+        this.handleGrayscaleChanged
+      );
+      
+      AccessibilityInfo.addEventListener(
+        'invertColorsChanged',
+        this.handleInvertColorsChanged
+      );
+    }
+  }
+
+  handleScreenReaderChanged = (isEnabled) => {
+    this.isScreenReaderEnabled = isEnabled;
+  };
+
+  handleReduceMotionChanged = (isEnabled) => {
+    this.reduceMotionEnabled = isEnabled;
+  };
+
+  handleBoldTextChanged = (isEnabled) => {
+    this.boldTextEnabled = isEnabled;
+  };
+
+  handleGrayscaleChanged = (isEnabled) => {
+    // Handle grayscale
+  };
+
+  handleInvertColorsChanged = (isEnabled) => {
+    this.invertColorsEnabled = isEnabled;
+  };
+
+  // Get accessible props for components
+  getAccessibleProps(label, hint = '', role = 'button') {
+    return {
+      accessible: true,
+      accessibilityLabel: label,
+      accessibilityHint: hint,
+      accessibilityRole: role,
+      accessibilityState: {},
+    };
+  }
+
+  // Get font scale
+  getFontScale() {
+    return this.fontScale;
+  }
+
+  // Should reduce animations
+  shouldReduceMotion() {
+    return this.reduceMotionEnabled;
+  }
+
+  // Get high contrast colors
+  getHighContrastColors() {
+    if (this.invertColorsEnabled) {
+      return {
+        text: '#000000',
+        background: '#FFFFFF',
+        border: '#000000',
+        primary: '#0000FF',
+      };
+    }
+    return null;
+  }
+}
+
+export default new AccessibilityConfig();
