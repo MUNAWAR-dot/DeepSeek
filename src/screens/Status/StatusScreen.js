@@ -1,3 +1,4 @@
+// src/screens/Status/StatusScreen.js
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -5,33 +6,48 @@ import {
   FlatList,
   TouchableOpacity,
   StyleSheet,
-  Image,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 
-const StatusScreen = ({ navigation }) => {
+const API_URL = 'https://chatsapp-g0dr.onrender.com';
+
+export default function StatusScreen({ navigation }) {
   const [statuses, setStatuses] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Load statuses from API
     loadStatuses();
   }, []);
 
   const loadStatuses = async () => {
     try {
-      // Replace with your actual API call
-      // const response = await statusAPI.getAll();
-      // setStatuses(response.data);
+      // Fetch statuses from API
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`${API_URL}/api/statuses`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
       
-      // Temporary mock data
-      setStatuses([
-        { id: 1, user: 'John Doe', time: '5 min ago', viewed: true },
-        { id: 2, user: 'Jane Smith', time: '30 min ago', viewed: false },
-        { id: 3, user: 'Mike Johnson', time: '2 hours ago', viewed: true },
-      ]);
+      if (response.ok) {
+        const data = await response.json();
+        setStatuses(data);
+      } else {
+        // Mock data if API not ready
+        setStatuses([
+          { id: 1, user: 'John Doe', time: '5 min ago', viewed: false },
+          { id: 2, user: 'Jane Smith', time: '30 min ago', viewed: true },
+          { id: 3, user: 'Mike Johnson', time: '2 hours ago', viewed: false },
+        ]);
+      }
     } catch (error) {
       console.log('Error loading statuses:', error);
+      // Mock data on error
+      setStatuses([
+        { id: 1, user: 'John Doe', time: '5 min ago', viewed: false },
+        { id: 2, user: 'Jane Smith', time: '30 min ago', viewed: true },
+      ]);
     } finally {
       setLoading(false);
     }
@@ -41,12 +57,12 @@ const StatusScreen = ({ navigation }) => {
     <TouchableOpacity style={styles.statusItem}>
       <View style={[styles.avatar, item.viewed ? styles.viewed : styles.unviewed]}>
         <Text style={styles.avatarText}>
-          {item.user.charAt(0)}
+          {item.user ? item.user.charAt(0).toUpperCase() : '?'}
         </Text>
       </View>
       <View style={styles.statusInfo}>
-        <Text style={styles.userName}>{item.user}</Text>
-        <Text style={styles.timeText}>{item.time}</Text>
+        <Text style={styles.userName}>{item.user || 'Unknown'}</Text>
+        <Text style={styles.timeText}>{item.time || 'Just now'}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -63,6 +79,12 @@ const StatusScreen = ({ navigation }) => {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Status</Text>
+        <TouchableOpacity 
+          style={styles.addButton}
+          onPress={() => navigation.navigate('CreateStatus')}
+        >
+          <Text style={styles.addButtonText}>+ Add</Text>
+        </TouchableOpacity>
       </View>
 
       <FlatList
@@ -70,19 +92,15 @@ const StatusScreen = ({ navigation }) => {
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderStatus}
         ListEmptyComponent={
-          <Text style={styles.emptyText}>No status updates</Text>
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No status updates</Text>
+            <Text style={styles.emptySubText}>Tap + to add your first status</Text>
+          </View>
         }
       />
-
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => navigation.navigate('CreateStatus')}
-      >
-        <Text style={styles.fabText}>+</Text>
-      </TouchableOpacity>
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -95,6 +113,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
@@ -103,11 +124,23 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
   },
+  addButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  addButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
   statusItem: {
     flexDirection: 'row',
     padding: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
+    alignItems: 'center',
   },
   avatar: {
     width: 50,
@@ -130,7 +163,6 @@ const styles = StyleSheet.create({
   },
   statusInfo: {
     flex: 1,
-    justifyContent: 'center',
   },
   userName: {
     fontSize: 16,
@@ -140,33 +172,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
   },
-  emptyText: {
-    textAlign: 'center',
-    marginTop: 50,
-    fontSize: 16,
-    color: '#999',
-  },
-  fab: {
-    position: 'absolute',
-    bottom: 30,
-    right: 30,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#007AFF',
-    justifyContent: 'center',
+  emptyContainer: {
     alignItems: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    marginTop: 100,
   },
-  fabText: {
-    color: '#fff',
-    fontSize: 30,
-    fontWeight: 'bold',
+  emptyText: {
+    fontSize: 18,
+    color: '#666',
+  },
+  emptySubText: {
+    fontSize: 14,
+    color: '#999',
+    marginTop: 8,
   },
 });
-
-export default StatusScreen;
