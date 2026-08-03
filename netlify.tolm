@@ -1,0 +1,11 @@
+[build]
+  command = "echo 'No build needed' && exit 0"
+  publish = "."
+
+[build.environment]
+  NODE_VERSION = "18"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
