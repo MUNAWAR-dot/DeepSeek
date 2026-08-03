@@ -4,8 +4,9 @@ const admin = require('firebase-admin');
 
 admin.initializeApp();
 const db = admin.firestore();
+const messaging = admin.messaging();
 
-// Clean up expired statuses
+// Clean up expired statuses every hour
 exports.cleanupExpiredStatuses = functions.pubsub
   .schedule('every 1 hours')
   .onRun(async (context) => {
@@ -16,22 +17,38 @@ exports.cleanupExpiredStatuses = functions.pubsub
       .where('expiresAt', '<=', now)
       .get();
 
+    if (snapshot.empty) {
+      console.log('No expired statuses to clean up');
+      return null;
+    }
+
     const batch = db.batch();
-    
+    const userIds = new Set();
+
     snapshot.forEach((doc) => {
       batch.delete(doc.ref);
-      
-      // Update user's hasStatus field if needed
-      const userId = doc.data().userId;
-      if (userId) {
-        db.collection('users').doc(userId).update({
+      userIds.add(doc.data().userId);
+    });
+
+    await batch.commit();
+
+    // Update user's hasStatus field
+    const userPromises = Array.from(userIds).map(async (userId) => {
+      const remainingSnapshot = await db
+        .collection('statuses')
+        .where('userId', '==', userId)
+        .where('expiresAt', '>', now)
+        .limit(1)
+        .get();
+
+      if (remainingSnapshot.empty) {
+        await db.collection('users').doc(userId).update({
           hasStatus: false,
         });
       }
     });
 
-    await batch.commit();
-    
+    await Promise.all(userPromises);
     console.log(`Cleaned up ${snapshot.size} expired statuses`);
     return null;
   });
@@ -41,62 +58,165 @@ exports.sendMessageNotification = functions.firestore
   .document('chats/{chatId}/messages/{messageId}')
   .onCreate(async (snap, context) => {
     const message = snap.data();
-    const chatId = context.params.chatId;
+    const { chatId } = context.params;
 
-    // Get chat details
-    const chatDoc = await db.collection('chats').doc(chatId).get();
-    const chatData = chatDoc.data();
+    // Don't send notification for system messages
+    if (message.type === 'system') return null;
 
-    if (!chatData) return null;
+    try {
+      const chatDoc = await db.collection('chats').doc(chatId).get();
+      if (!chatDoc.exists) return null;
 
-    // Send notification to each participant except sender
-    const notifications = chatData.participants
-      .filter((participantId) => participantId !== message.senderId)
-      .map(async (participantId) => {
-        const userDoc = await db.collection('users').doc(participantId).get();
-        const userData = userDoc.data();
+      const chatData = chatDoc.data();
+      
+      // Get sender info
+      const senderDoc = await db.collection('users').doc(message.senderId).get();
+      const senderName = senderDoc.data()?.displayName || 'Someone';
+      const chatName = chatData.isGroup ? chatData.groupName : senderName;
 
-        if (!userData || !userData.fcmTokens?.length) return null;
+      // Send to all participants except sender
+      const notificationPromises = chatData.participants
+        .filter((participantId) => participantId !== message.senderId)
+        .map(async (participantId) => {
+          // Check if user has muted the chat
+          const userDoc = await db.collection('users').doc(participantId).get();
+          const userData = userDoc.data();
 
-        const senderDoc = await db.collection('users').doc(message.senderId).get();
-        const senderName = senderDoc.data()?.displayName || 'Someone';
+          if (!userData?.fcmTokens?.length) return null;
 
-        const payload = {
-          notification: {
-            title: chatData.isGroup ? chatData.groupName : senderName,
-            body: message.type === 'text' 
-              ? message.content 
-              : `Sent ${message.type}`,
-          },
-          data: {
-            type: 'message',
-            chatId,
-            messageId: message.id,
-            senderId: message.senderId,
-          },
-          tokens: userData.fcmTokens,
-        };
+          // Check mute settings
+          const mutedUntil = chatData.mutedUntil?.toDate?.();
+          if (mutedUntil && mutedUntil > new Date()) return null;
 
-        try {
-          await admin.messaging().sendMulticast(payload);
-        } catch (error) {
-          console.error('Notification error:', error);
-        }
-      });
+          // Check if user blocked sender
+          if (userData.blockedUsers?.includes(message.senderId)) return null;
 
-    await Promise.all(notifications);
-    return null;
+          const payload = {
+            notification: {
+              title: chatName,
+              body: getNotificationBody(message),
+              sound: 'default',
+              badge: `${(userData.unreadCount || 0) + 1}`,
+            },
+            data: {
+              type: 'message',
+              chatId,
+              messageId: message.id,
+              senderId: message.senderId,
+              isGroup: String(chatData.isGroup || false),
+            },
+            android: {
+              priority: 'high',
+              notification: {
+                channelId: 'chatsapp-messages',
+                clickAction: 'OPEN_CHAT',
+              },
+            },
+            apns: {
+              payload: {
+                aps: {
+                  sound: 'default',
+                  badge: (userData.unreadCount || 0) + 1,
+                  'mutable-content': 1,
+                },
+              },
+            },
+            tokens: userData.fcmTokens,
+          };
+
+          try {
+            const response = await messaging.sendMulticast(payload);
+            
+            // Clean up invalid tokens
+            if (response.failureCount > 0) {
+              const invalidTokens = [];
+              response.responses.forEach((resp, idx) => {
+                if (!resp.success) {
+                  invalidTokens.push(userData.fcmTokens[idx]);
+                }
+              });
+
+              if (invalidTokens.length > 0) {
+                await db.collection('users').doc(participantId).update({
+                  fcmTokens: admin.firestore.FieldValue.arrayRemove(...invalidTokens),
+                });
+              }
+            }
+
+            return response;
+          } catch (error) {
+            console.error(`Notification failed for user ${participantId}:`, error);
+            return null;
+          }
+        });
+
+      await Promise.all(notificationPromises);
+      return null;
+    } catch (error) {
+      console.error('Send message notification failed:', error);
+      return null;
+    }
   });
 
-// Update user presence on disconnect
+// Generate thumbnail for images
+exports.generateThumbnail = functions.storage
+  .object()
+  .onFinalize(async (object) => {
+    const filePath = object.name;
+    const contentType = object.contentType;
+
+    // Only process images
+    if (!contentType?.startsWith('image/')) return null;
+
+    // Skip if already a thumbnail
+    if (filePath.includes('thumb_')) return null;
+
+    const bucket = admin.storage().bucket(object.bucket);
+    const file = bucket.file(filePath);
+
+    const fileName = filePath.split('/').pop();
+    const thumbFilePath = filePath.replace(fileName, `thumb_${fileName}`);
+
+    // Check if thumbnail already exists
+    const [exists] = await bucket.file(thumbFilePath).exists();
+    if (exists) return null;
+
+    try {
+      const sharp = require('sharp');
+      const tempFilePath = `/tmp/${fileName}`;
+      const tempThumbPath = `/tmp/thumb_${fileName}`;
+
+      await file.download({ destination: tempFilePath });
+
+      await sharp(tempFilePath)
+        .resize(300, 300, { fit: 'inside' })
+        .jpeg({ quality: 80 })
+        .toFile(tempThumbPath);
+
+      await bucket.upload(tempThumbPath, {
+        destination: thumbFilePath,
+        metadata: {
+          contentType: 'image/jpeg',
+        },
+      });
+
+      console.log(`Thumbnail generated: ${thumbFilePath}`);
+      return null;
+    } catch (error) {
+      console.error('Thumbnail generation failed:', error);
+      return null;
+    }
+  });
+
+// Update user online status
 exports.onUserStatusChanged = functions.database
   .ref('/status/{userId}')
   .onUpdate(async (change, context) => {
-    const userId = context.params.userId;
+    const { userId } = context.params;
     const status = change.after.val();
 
     const userRef = db.collection('users').doc(userId);
-    
+
     if (status === 'online') {
       await userRef.update({
         online: true,
@@ -111,3 +231,67 @@ exports.onUserStatusChanged = functions.database
 
     return null;
   });
+
+// Clean up old messages (optional - for storage management)
+exports.cleanupOldMessages = functions.pubsub
+  .schedule('every 24 hours')
+  .onRun(async (context) => {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const cutoff = admin.firestore.Timestamp.fromDate(thirtyDaysAgo);
+
+    try {
+      const chatsSnapshot = await db.collection('chats').get();
+      let deletedCount = 0;
+
+      for (const chatDoc of chatsSnapshot.docs) {
+        const messagesSnapshot = await db
+          .collection('chats')
+          .doc(chatDoc.id)
+          .collection('messages')
+          .where('timestamp', '<=', cutoff)
+          .where('type', 'in', ['image', 'video', 'audio'])
+          .get();
+
+        const batch = db.batch();
+        messagesSnapshot.forEach((doc) => {
+          batch.delete(doc.ref);
+          deletedCount++;
+        });
+
+        if (messagesSnapshot.size > 0) {
+          await batch.commit();
+        }
+      }
+
+      console.log(`Cleaned up ${deletedCount} old media messages`);
+      return null;
+    } catch (error) {
+      console.error('Cleanup old messages failed:', error);
+      return null;
+    }
+  });
+
+function getNotificationBody(message) {
+  switch (message.type) {
+    case 'text':
+      return message.content?.substring(0, 100) || '';
+    case 'image':
+      return '📷 Sent an image';
+    case 'video':
+      return '🎥 Sent a video';
+    case 'audio':
+      return '🎵 Sent a voice message';
+    case 'document':
+      return '📄 Sent a document';
+    case 'location':
+      return '📍 Shared a location';
+    case 'contact':
+      return '👤 Shared a contact';
+    case 'sticker':
+      return '🎯 Sent a sticker';
+    default:
+      return 'New message';
+  }
+}
