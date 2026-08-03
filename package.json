@@ -123,6 +123,7 @@
     "@types/crypto-js": "^4.2.1",
     "babel-jest": "^29.7.0",
     "babel-plugin-module-resolver": "^5.0.0",
+    "babel-plugin-transform-remove-console": "^6.9.4",
     "eslint": "^8.54.0",
     "jest": "^29.7.0",
     "metro-react-native-babel-preset": "^0.77.0",
@@ -133,4 +134,4 @@
   "engines": {
     "node": ">=18"
   }
-}
+  }
