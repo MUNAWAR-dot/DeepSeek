@@ -6,7 +6,7 @@ import { Platform } from 'react-native';
 let AppComponent = null;
 
 if (Platform.OS === 'web') {
-  // Web version - simple
+  // Web version - full app with navigation
   AppComponent = require('./App.web').default;
 } else {
   // Native version - full app
