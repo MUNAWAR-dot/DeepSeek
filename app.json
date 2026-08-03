@@ -25,7 +25,15 @@
         "NSCameraUsageDescription": "Allow ChatsApp to access your camera to send photos and videos",
         "NSMicrophoneUsageDescription": "Allow ChatsApp to access your microphone for voice messages and calls",
         "NSPhotoLibraryUsageDescription": "Allow ChatsApp to access your photo library to share photos",
-        "NSLocationWhenInUseUsageDescription": "Allow ChatsApp to access your location to share with friends"
+        "NSPhotoLibraryAddUsageDescription": "Allow ChatsApp to save photos to your library",
+        "NSLocationWhenInUseUsageDescription": "Allow ChatsApp to access your location to share with friends",
+        "NSLocationAlwaysUsageDescription": "Allow ChatsApp to access your location for live location sharing",
+        "NSMotionUsageDescription": "Allow ChatsApp to access motion data",
+        "UIBackgroundModes": ["audio", "voip", "fetch", "remote-notification"],
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "config": {
+        "googleMapsApiKey": "YOUR_GOOGLE_MAPS_API_KEY"
       },
       "googleServicesFile": "./ios/GoogleService-Info.plist"
     },
@@ -45,16 +53,36 @@
         "WRITE_EXTERNAL_STORAGE",
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
         "FOREGROUND_SERVICE",
         "VIBRATE",
-        "RECEIVE_BOOT_COMPLETED"
+        "RECEIVE_BOOT_COMPLETED",
+        "SYSTEM_ALERT_WINDOW",
+        "USE_FULL_SCREEN_INTENT"
       ],
-      "googleServicesFile": "./android/app/google-services.json"
+      "googleServicesFile": "./android/app/google-services.json",
+      "config": {
+        "googleMaps": {
+          "apiKey": "YOUR_GOOGLE_MAPS_API_KEY"
+        }
+      }
     },
     "plugins": [
       "@react-native-firebase/app",
       "@react-native-firebase/auth",
-      "@react-native-google-signin/google-signin"
-    ]
+      "@react-native-google-signin/google-signin",
+      [
+        "react-native-video",
+        {
+          "enableNotificationControls": true,
+          "enableBackgroundAudio": true
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "your-project-id"
+      }
+    }
   }
 }
