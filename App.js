@@ -11,14 +11,16 @@ import {
 import { NavigationContainer } from '@react-navigation/native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { Provider as PaperProvider } from 'react-native-paper';
 import RootNavigator from './src/navigation/RootNavigator';
 import SplashScreen from './src/screens/Common/SplashScreen';
+import NetworkStatus from './src/components/Common/NetworkStatus';
+import Toast from './src/components/Common/Toast';
+import { ErrorBoundary } from './src/components/Common/ErrorBoundary';
+import { ThemeProvider } from './src/config/theme';
 import { initializeFirebase } from './src/services/firebase';
 import { initializeSocket } from './src/services/socket';
 import { requestAllPermissions } from './src/utils/permissions';
-import { ErrorBoundary } from './src/components/Common/ErrorBoundary';
-import { ThemeProvider } from './src/config/theme';
+import notificationService from './src/services/notificationService';
 import useStore from './src/store/store';
 import './src/i18n';
 
@@ -37,6 +39,9 @@ if (
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
+// Navigation ref for global access
+export const navigationRef = React.createRef();
+
 const App = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [initError, setInitError] = useState(null);
@@ -53,6 +58,9 @@ const App = () => {
       
       // Initialize Socket.io connection
       await initializeSocket();
+      
+      // Configure push notifications
+      await notificationService.configure();
       
       // Request all necessary permissions
       await requestAllPermissions();
@@ -87,16 +95,16 @@ const App = () => {
       <GestureHandlerRootView style={styles.container}>
         <SafeAreaProvider>
           <ThemeProvider theme={theme}>
-            <PaperProvider>
-              <NavigationContainer>
-                <StatusBar
-                  barStyle="light-content"
-                  backgroundColor="#075E54"
-                  translucent={false}
-                />
-                <RootNavigator />
-              </NavigationContainer>
-            </PaperProvider>
+            <NavigationContainer ref={navigationRef}>
+              <StatusBar
+                barStyle="light-content"
+                backgroundColor="#075E54"
+                translucent={false}
+              />
+              <NetworkStatus />
+              <RootNavigator />
+              <Toast />
+            </NavigationContainer>
           </ThemeProvider>
         </SafeAreaProvider>
       </GestureHandlerRootView>
