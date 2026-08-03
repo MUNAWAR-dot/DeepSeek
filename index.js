@@ -1,22 +1,18 @@
-import { AppRegistry } from 'react-native';
+import { registerRootComponent } from 'expo';
+import { Platform } from 'react-native';
 import App from './App';
-import { name as appName } from './app.json';
-import 'react-native-gesture-handler';
-import 'react-native-reanimated';
 
-// Enable LayoutAnimation for Android
-if (Platform.OS === 'android') {
-  if (UIManager.setLayoutAnimationEnabledExperimental) {
-    UIManager.setLayoutAnimationEnabledExperimental(true);
+// Register background message handler (only on native platforms)
+if (Platform.OS !== 'web') {
+  try {
+    const messaging = require('@react-native-firebase/messaging').default;
+    messaging().setBackgroundMessageHandler(async remoteMessage => {
+      console.log('Message handled in the background!', remoteMessage);
+    });
+  } catch (error) {
+    console.log('Firebase messaging not available:', error);
   }
 }
 
-// Register background message handler
-import messaging from '@react-native-firebase/messaging';
-
-messaging().setBackgroundMessageHandler(async remoteMessage => {
-  console.log('Message handled in the background!', remoteMessage);
-  // Handle background messages
-});
-
-AppRegistry.registerComponent(appName, () => App);
+// Register the app
+registerRootComponent(App);
