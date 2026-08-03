@@ -1,1 +1,5 @@
-postgresql://neondb_owner:npg_1OzPrnj7cGTB@ep-weathered-silence-ayk0i2ro-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+DATABASE_URL=postgresql://neondb_owner:npg_1OzPrnj7cGTB@ep-weathered-silence-ayk0i2ro-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+JWT_SECRET=my-strong-secret-password-1237
+CLOUDINARY_CLOUD_NAME=pfdajr1y
+CLOUDINARY_API_KEY=917895761639197
+CLOUDINARY_API_SECRET=zLSAxk2BsoyGX97GYFVkvMEy1yw
