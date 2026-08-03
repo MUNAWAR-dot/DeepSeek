@@ -1,27 +1,22 @@
 // src/services/notificationService.web.js
-// Web stub - notifications not supported on web
-
 export const requestUserPermission = async () => {
-  console.log('Notifications not supported on web');
+  if ('Notification' in window && Notification.permission === 'default') {
+    const permission = await Notification.requestPermission();
+    return permission === 'granted';
+  }
   return false;
 };
 
-export const setupNotificationListeners = () => {
-  console.log('Notifications not supported on web');
-};
-
-export const getFCMToken = async () => {
-  console.log('FCM not supported on web');
-  return null;
-};
-
-export const sendLocalNotification = () => {
-  console.log('Local notifications not supported on web');
+export const sendLocalNotification = (title, message) => {
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification(title, {
+      body: message,
+      icon: '/favicon.ico',
+    });
+  }
 };
 
 export default {
   requestUserPermission,
-  setupNotificationListeners,
-  getFCMToken,
   sendLocalNotification,
 };
