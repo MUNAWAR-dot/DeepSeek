@@ -72,7 +72,6 @@
     "react-native-linear-gradient": "^2.8.3",
     "react-native-localize": "^3.0.6",
     "react-native-maps": "^1.8.4",
-    "react-native-media-meta": "^1.1.0",
     "react-native-modal": "^13.0.1",
     "react-native-permissions": "^4.0.4",
     "react-native-push-notification": "^8.1.1",
@@ -122,4 +121,4 @@
   "engines": {
     "node": ">=18"
   }
-  }
+}
