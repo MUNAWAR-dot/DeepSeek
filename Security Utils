@@ -1,0 +1,179 @@
+// src/utils/security.js
+import { Platform, NativeModules } from 'react-native';
+import CryptoJS from 'crypto-js';
+import * as Keychain from 'react-native-keychain';
+import DeviceInfo from 'react-native-device-info';
+
+class SecurityUtils {
+  // Generate secure random string
+  generateSecureToken(length = 32) {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    const randomValues = new Uint8Array(length);
+    
+    if (global.crypto && global.crypto.getRandomValues) {
+      global.crypto.getRandomValues(randomValues);
+    } else {
+      for (let i = 0; i < length; i++) {
+        randomValues[i] = Math.floor(Math.random() * 256);
+      }
+    }
+    
+    for (let i = 0; i < length; i++) {
+      result += chars[randomValues[i] % chars.length];
+    }
+    
+    return result;
+  }
+
+  // Hash sensitive data
+  hashData(data) {
+    return CryptoJS.SHA256(data).toString();
+  }
+
+  // Encrypt sensitive local data
+  encryptLocalData(data, key) {
+    return CryptoJS.AES.encrypt(JSON.stringify(data), key).toString();
+  }
+
+  // Decrypt sensitive local data
+  decryptLocalData(encryptedData, key) {
+    const bytes = CryptoJS.AES.decrypt(encryptedData, key);
+    return JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
+  }
+
+  // Secure keychain storage
+  async storeSecureData(key, value) {
+    try {
+      await Keychain.setInternetCredentials(
+        'com.chatsapp',
+        key,
+        JSON.stringify(value),
+        {
+          accessControl: Keychain.ACCESS_CONTROL.BIOMETRY_CURRENT_SET_OR_DEVICE_PASSCODE,
+          accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+        }
+      );
+      return true;
+    } catch (error) {
+      console.error('Secure storage failed:', error);
+      return false;
+    }
+  }
+
+  async getSecureData(key) {
+    try {
+      const credentials = await Keychain.getInternetCredentials('com.chatsapp');
+      if (credentials && credentials.username === key) {
+        return JSON.parse(credentials.password);
+      }
+      return null;
+    } catch (error) {
+      console.error('Secure retrieval failed:', error);
+      return null;
+    }
+  }
+
+  async removeSecureData(key) {
+    try {
+      await Keychain.resetInternetCredentials('com.chatsapp');
+      return true;
+    } catch (error) {
+      console.error('Secure removal failed:', error);
+      return false;
+    }
+  }
+
+  // Device integrity check
+  async checkDeviceIntegrity() {
+    const checks = {
+      isEmulator: await DeviceInfo.isEmulator(),
+      isRooted: false,
+      isJailBroken: false,
+    };
+
+    if (Platform.OS === 'android') {
+      try {
+        checks.isRooted = await NativeModules.RootCheck?.isRooted() || false;
+      } catch (error) {
+        console.error('Root check failed:', error);
+      }
+    }
+
+    return checks;
+  }
+
+  // Sanitize user input
+  sanitizeInput(input) {
+    if (typeof input !== 'string') return input;
+    
+    // Remove HTML tags
+    let sanitized = input.replace(/<[^>]*>/g, '');
+    
+    // Remove script tags and event handlers
+    sanitized = sanitized.replace(/javascript:/gi, '');
+    sanitized = sanitized.replace(/on\w+=/gi, '');
+    
+    // Trim whitespace
+    sanitized = sanitized.trim();
+    
+    return sanitized;
+  }
+
+  // Validate file upload
+  validateFileUpload(file, allowedTypes, maxSize) {
+    if (!file) return { valid: false, error: 'No file provided' };
+
+    if (file.size > maxSize) {
+      return {
+        valid: false,
+        error: `File size exceeds maximum allowed size of ${maxSize / 1024 / 1024}MB`,
+      };
+    }
+
+    if (allowedTypes && !allowedTypes.includes(file.type)) {
+      return {
+        valid: false,
+        error: `File type ${file.type} is not allowed`,
+      };
+    }
+
+    return { valid: true };
+  }
+
+  // Generate device fingerprint
+  async generateDeviceFingerprint() {
+    try {
+      const fingerprint = await DeviceInfo.getUniqueId();
+      return this.hashData(fingerprint);
+    } catch (error) {
+      console.error('Device fingerprint generation failed:', error);
+      return null;
+    }
+  }
+
+  // Check for screen recording (iOS)
+  async isScreenRecording() {
+    if (Platform.OS === 'ios') {
+      try {
+        return await NativeModules.ScreenRecordingDetector?.isRecording() || false;
+      } catch (error) {
+        return false;
+      }
+    }
+    return false;
+  }
+
+  // Secure clipboard handling
+  clearClipboardAfterTimeout(timeout = 30000) {
+    setTimeout(async () => {
+      try {
+        await Clipboard.setString('');
+      } catch (error) {
+        console.error('Clear clipboard failed:', error);
+      }
+    }, timeout);
+  }
+}
+
+export default new SecurityUtils();
