@@ -1,55 +1,56 @@
-import React, { useState, useEffect } from 'react';
+// src/navigation/RootNavigator.js
+import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { ActivityIndicator, View } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import AuthNavigator from './AuthNavigator';
-import MainNavigator from './MainNavigator';
+import { View, Text, StyleSheet } from 'react-native';
 
 const Stack = createNativeStackNavigator();
 
-const RootNavigator = () => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+// Simple home screen for testing
+function HomeScreen() {
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>🎉 Home Screen</Text>
+      <Text style={styles.sub}>Navigation is working!</Text>
+    </View>
+  );
+}
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const token = await AsyncStorage.getItem('authToken');
-        const userData = await AsyncStorage.getItem('user');
-        if (token && userData) {
-          const user = JSON.parse(userData);
-          setUser(user);
-        }
-      } catch (error) {
-        console.log('Auth check error:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    checkAuth();
-  }, []);
+function SettingsScreen() {
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>⚙️ Settings</Text>
+      <Text style={styles.sub}>Settings screen working</Text>
+    </View>
+  );
+}
 
-  if (loading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
-    );
-  }
-
+export default function RootNavigator() {
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {user ? (
-          <Stack.Screen name="Main" component={MainNavigator} />
-        ) : (
-          <Stack.Screen name="Auth" component={AuthNavigator} />
-        )}
+      <Stack.Navigator initialRouteName="Home">
+        <Stack.Screen name="Home" component={HomeScreen} />
+        <Stack.Screen name="Settings" component={SettingsScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
-};
+}
 
-export default RootNavigator;
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#007AFF',
+  },
+  sub: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 10,
+  },
+});
