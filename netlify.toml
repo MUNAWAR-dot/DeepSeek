@@ -1,3 +1,4 @@
+# netlify.toml
 [build]
   command = "npm install && npx expo export --platform web"
   publish = "dist"
