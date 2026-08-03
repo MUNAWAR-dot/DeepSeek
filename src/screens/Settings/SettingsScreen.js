@@ -1,3 +1,4 @@
+// src/screens/Settings/SettingsScreen.js
 import React from 'react';
 import {
   View,
@@ -5,27 +6,54 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  Alert,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const SettingsScreen = ({ navigation }) => {
-  const handleLogout = async () => {
-    try {
-      await AsyncStorage.removeItem('authToken');
-      await AsyncStorage.removeItem('user');
-      navigation.navigate('Login');
-    } catch (error) {
-      console.log('Logout error:', error);
-    }
+export default function SettingsScreen({ navigation }) {
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Logout', 
+          style: 'destructive',
+          onPress: () => {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('user');
+            navigation.navigate('Login');
+          }
+        },
+      ]
+    );
   };
 
   const settingsOptions = [
-    { title: 'Profile', onPress: () => navigation.navigate('Profile') },
-    { title: 'Privacy', onPress: () => navigation.navigate('Privacy') },
-    { title: 'Notifications', onPress: () => navigation.navigate('Notifications') },
-    { title: 'Language', onPress: () => navigation.navigate('Language') },
-    { title: 'Theme', onPress: () => navigation.navigate('Theme') },
-    { title: 'About', onPress: () => navigation.navigate('About') },
+    { 
+      title: '👤 Profile', 
+      onPress: () => navigation.navigate('Profile') 
+    },
+    { 
+      title: '🔒 Privacy', 
+      onPress: () => Alert.alert('Privacy', 'Privacy settings coming soon') 
+    },
+    { 
+      title: '🔔 Notifications', 
+      onPress: () => Alert.alert('Notifications', 'Notification settings coming soon') 
+    },
+    { 
+      title: '🌐 Language', 
+      onPress: () => Alert.alert('Language', 'Language settings coming soon') 
+    },
+    { 
+      title: '🎨 Theme', 
+      onPress: () => Alert.alert('Theme', 'Theme settings coming soon') 
+    },
+    { 
+      title: 'ℹ️ About', 
+      onPress: () => Alert.alert('About', 'ChatsApp v1.0.0\nBuilt with React Native') 
+    },
   ];
 
   return (
@@ -47,12 +75,14 @@ const SettingsScreen = ({ navigation }) => {
         ))}
 
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Text style={styles.logoutText}>Logout</Text>
+          <Text style={styles.logoutText}>🚪 Logout</Text>
         </TouchableOpacity>
+
+        <Text style={styles.versionText}>Version 1.0.0</Text>
       </ScrollView>
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -71,6 +101,7 @@ const styles = StyleSheet.create({
   optionItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
@@ -95,6 +126,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
+  versionText: {
+    textAlign: 'center',
+    color: '#999',
+    fontSize: 12,
+    marginTop: 20,
+    marginBottom: 30,
+  },
 });
-
-export default SettingsScreen;
