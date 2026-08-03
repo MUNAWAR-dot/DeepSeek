@@ -1,0 +1,43 @@
+// src/index.js - Main export file for the application
+export { default as App } from '../App';
+export { default as useStore } from './store/store';
+export { default as api } from './config/api';
+export { default as theme } from './config/theme';
+export { default as constants } from './config/constants';
+export { default as firebase } from './services/firebase';
+export { default as socketService } from './services/socket';
+export { default as chatService } from './services/chatService';
+export { default as userService } from './services/userService';
+export { default as statusService } from './services/statusService';
+export { default as callService } from './services/callService';
+export { default as notificationService } from './services/notificationService';
+export { default as mediaService } from './services/mediaService';
+export { default as encryptionService } from './services/encryptionService';
+export { default as storage } from './utils/storage';
+export { default as logger } from './utils/logger';
+export { default as network } from './utils/network';
+
+// Components
+export { default as Avatar } from './components/Common/Avatar';
+export { default as Button } from './components/Common/Button';
+export { default as Input } from './components/Common/Input';
+export { default as Header } from './components/Common/Header';
+export { default as SearchBar } from './components/Common/SearchBar';
+export { default as Loading } from './components/Common/Loading';
+export { default as EmptyState } from './components/Common/EmptyState';
+export { default as ErrorBoundary } from './components/Common/ErrorBoundary';
+export { default as Toast } from './components/Common/Toast';
+export { default as ConfirmationDialog } from './components/Common/ConfirmationDialog';
+
+// Hooks
+export { useAuth } from './hooks/useAuth';
+export { useChat } from './hooks/useChat';
+export { useOnlineStatus } from './hooks/useOnlineStatus';
+export { useStatus } from './hooks/useStatus';
+
+// Utils
+export * from './utils/dateUtils';
+export * from './utils/validations';
+export * from './utils/helpers';
+export * from './utils/animations';
+export * from './utils/constants';
