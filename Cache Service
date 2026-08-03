@@ -1,0 +1,147 @@
+// src/services/cacheService.js
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+class CacheService {
+  constructor() {
+    this.memoryCache = new Map();
+    this.prefix = '@cache:';
+  }
+
+  // Memory cache
+  setMemory(key, value, ttl = 300000) { // 5 minutes default
+    const expiry = Date.now() + ttl;
+    this.memoryCache.set(key, { value, expiry });
+  }
+
+  getMemory(key) {
+    const cached = this.memoryCache.get(key);
+    if (!cached) return null;
+    
+    if (Date.now() > cached.expiry) {
+      this.memoryCache.delete(key);
+      return null;
+    }
+    
+    return cached.value;
+  }
+
+  deleteMemory(key) {
+    this.memoryCache.delete(key);
+  }
+
+  clearMemory() {
+    this.memoryCache.clear();
+  }
+
+  // Persistent cache
+  async setPersistent(key, value, ttl = 3600000) { // 1 hour default
+    const cacheData = {
+      value,
+      expiry: Date.now() + ttl,
+    };
+    
+    try {
+      await AsyncStorage.setItem(
+        this.prefix + key,
+        JSON.stringify(cacheData)
+      );
+    } catch (error) {
+      console.error('Cache set failed:', error);
+    }
+  }
+
+  async getPersistent(key) {
+    try {
+      const data = await AsyncStorage.getItem(this.prefix + key);
+      if (!data) return null;
+      
+      const cacheData = JSON.parse(data);
+      
+      if (Date.now() > cacheData.expiry) {
+        await AsyncStorage.removeItem(this.prefix + key);
+        return null;
+      }
+      
+      return cacheData.value;
+    } catch (error) {
+      console.error('Cache get failed:', error);
+      return null;
+    }
+  }
+
+  async deletePersistent(key) {
+    try {
+      await AsyncStorage.removeItem(this.prefix + key);
+    } catch (error) {
+      console.error('Cache delete failed:', error);
+    }
+  }
+
+  async clearPersistent() {
+    try {
+      const keys = await AsyncStorage.getAllKeys();
+      const cacheKeys = keys.filter(k => k.startsWith(this.prefix));
+      await AsyncStorage.multiRemove(cacheKeys);
+    } catch (error) {
+      console.error('Cache clear failed:', error);
+    }
+  }
+
+  // Smart cache (memory + persistent)
+  async get(key, fetchFn, ttl = 3600000) {
+    // Check memory first
+    const memoryResult = this.getMemory(key);
+    if (memoryResult) return memoryResult;
+
+    // Check persistent
+    const persistentResult = await this.getPersistent(key);
+    if (persistentResult) {
+      this.setMemory(key, persistentResult, ttl);
+      return persistentResult;
+    }
+
+    // Fetch fresh data
+    const freshData = await fetchFn();
+    
+    // Cache the result
+    this.setMemory(key, freshData, ttl);
+    await this.setPersistent(key, freshData, ttl);
+    
+    return freshData;
+  }
+
+  // Invalidate cache
+  async invalidate(key) {
+    this.deleteMemory(key);
+    await this.deletePersistent(key);
+  }
+
+  // Cache user profiles
+  async cacheUserProfile(userId, profile) {
+    return this.get(
+      `user:${userId}`,
+      async () => profile,
+      300000 // 5 minutes
+    );
+  }
+
+  // Cache chat list
+  async cacheChatList(userId, chats) {
+    return this.get(
+      `chats:${userId}`,
+      async () => chats,
+      60000 // 1 minute
+    );
+  }
+
+  // Cache messages
+  async cacheMessages(chatId, messages) {
+    return this.get(
+      `messages:${chatId}`,
+      async () => messages,
+      30000 // 30 seconds
+    );
+  }
+}
+
+export default new CacheService();
