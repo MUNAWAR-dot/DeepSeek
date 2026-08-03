@@ -1,30 +1,6 @@
 module.exports = {
-  presets: ['module:@react-native/babel-preset'],
+  presets: ['babel-preset-expo'],
   plugins: [
     'react-native-reanimated/plugin',
-    [
-      'module-resolver',
-      {
-        root: ['./'],
-        alias: {
-          '@': './src',
-          '@components': './src/components',
-          '@screens': './src/screens',
-          '@navigation': './src/navigation',
-          '@services': './src/services',
-          '@store': './src/store',
-          '@utils': './src/utils',
-          '@hooks': './src/hooks',
-          '@assets': './src/assets',
-          '@config': './src/config',
-          '@i18n': './src/i18n',
-        },
-      },
-    ],
   ],
-  env: {
-    production: {
-      plugins: ['transform-remove-console'],
-    },
-  },
 };
