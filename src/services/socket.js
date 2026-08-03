@@ -17,7 +17,7 @@ export const initializeSocket = async () => {
       return;
     }
 
-    const SOCKET_URL = process.env.SOCKET_URL || 'http://localhost:3000';
+    const SOCKET_URL = process.env.SOCKET_URL || 'https://chatsapp-api.onrender.com';
 
     socket = io(SOCKET_URL, {
       auth: {
