@@ -1,16 +1,24 @@
-// App.js
 import React from 'react';
-import { Platform } from 'react-native';
 
-// Use different App based on platform
-let AppComponent = null;
+function App() {
+  const isLoggedIn = localStorage.getItem('token');
 
-if (Platform.OS === 'web') {
-  // Web version - full app with navigation
-  AppComponent = require('./App.web').default;
-} else {
-  // Native version - full app
-  AppComponent = require('./App.native').default;
+  if (!isLoggedIn) {
+    // Load login page
+    return <LoginScreen />;
+  }
+
+  // Load chat page
+  return <ChatScreen />;
 }
 
-export default AppComponent;
+// Simple router - no extra library needed
+function LoginScreen() {
+  return React.createElement(require('./screens/Auth/LoginScreen').default);
+}
+
+function ChatScreen() {
+  return React.createElement(require('./screens/Chats/ChatListScreen').default);
+}
+
+export default App;
